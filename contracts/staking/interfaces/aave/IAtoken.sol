@@ -8,5 +8,4 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  * @author Aave
  * @notice Defines the basic interface for an AToken.
  **/
-interface IAToken is IERC20 {
-}
+interface IAToken is IERC20 {}

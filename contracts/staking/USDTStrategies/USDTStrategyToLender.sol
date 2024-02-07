@@ -560,7 +560,7 @@ contract USDTStrategyToLender is BaseStrategy {
                 return;
             }
         }
-        require(false, "Not lender");
+        revert("Not lender");
     }
 
     /**

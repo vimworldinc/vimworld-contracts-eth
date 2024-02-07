@@ -1,0 +1,37 @@
+{
+  "name": "@vimworldinc/vimworld-contracts-ethereum",
+  "version": "0.0.39",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "npx hardhat test",
+    "deploy": "npx hardhat run scripts/deploy.ts --network",
+    "coverage": "npx hardhat coverage",
+    "format": "prettier --write \"contracts/**/*.sol\" \"**/**/*.ts\"",
+    "check": "npx hardhat check && prettier --check \"contracts/**/*.sol\" \"**/**/*.ts\"",
+    "check-format": "prettier --check \"contracts/**/*.sol\" \"**/**/*.ts\"",
+    "check-solhint": "if [ \"$(hardhat check | wc -w)\" -gt 0 ];then hardhat check && exit 1;fi"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://gitlab.com/vimworldinc/vimworld/smart-contract/vimworld-contracts-ethereum.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://gitlab.com/vimworldinc/vimworld/smart-contract/vimworld-contracts-ethereum/-/issues"
+  },
+  "homepage": "https://gitlab.com/vimworldinc/vimworld/smart-contract/vimworld-contracts-ethereum#readme",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^2.0.2",
+    "@nomiclabs/hardhat-solhint": "^3.0.1",
+    "@openzeppelin/contracts": "4.9.2",
+    "@openzeppelin/contracts-upgradeable": "4.9.2",
+    "dotenv": "^16.3.1",
+    "eth-sig-util": "^3.0.1",
+    "hardhat": "^2.17.0",
+    "prettier": "^3.0.3",
+    "prettier-plugin-solidity": "^1.1.3"
+  }
+}

@@ -1,0 +1,29 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+node_modules
+
+# production
+.openzeppelin
+typechain
+typechain-types
+
+# misc
+.env
+
+#IDE files
+.DS_Store
+.vscode
+.idea
+.deps
+
+#Hardhat files
+cache
+artifacts
+
+#Solidity-coverage files
+coverage.json
+coverage
+
+
+

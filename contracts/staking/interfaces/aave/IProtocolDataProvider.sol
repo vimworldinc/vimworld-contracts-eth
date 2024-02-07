@@ -46,5 +46,4 @@ interface IProtocolDataProvider {
             uint256 variableBorrowIndex,
             uint40 lastUpdateTimestamp
         );
-
 }

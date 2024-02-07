@@ -16,5 +16,4 @@ interface ICurveFi {
         int128 to,
         uint256 _from_amount
     ) external view returns (uint256);
-
 }

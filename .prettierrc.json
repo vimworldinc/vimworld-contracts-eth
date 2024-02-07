@@ -1,0 +1,16 @@
+{
+  "tabWidth": 4,
+  "plugins": ["prettier-plugin-solidity"],
+  "overrides": [
+    {
+      "files": ["*.ts"],
+      "options": {
+        "parser": "typescript"
+      }
+    },
+    {
+      "files": ["*.sol"],
+      "plugins": ["prettier-plugin-foo"]
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "extends": "solhint:recommended",
+  "rules": {
+    "custom-errors": "off",
+    "func-visibility": ["warn",{"ignoreConstructors": true}],
+    "reason-string": "off",
+    "no-empty-blocks": "off",
+    "no-inline-assembly": "off",
+    "func-name-mixedcase": "off",
+    "func-param-name-mixedcase": "error",
+    "modifier-name-mixedcase": "error",
+    "private-vars-leading-underscore": "error",
+    "one-contract-per-file": "off",
+    "max-states-count": "off"
+  },
+  "excludedFiles": ["**/staking/interfaces/ICurveFi.sol"]
+}
+

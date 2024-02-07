@@ -2,7 +2,6 @@
 pragma solidity ^0.8.19;
 
 import {DataTypesV3} from "./DataTypesV3.sol";
-import {IPoolAddressesProvider} from "./IPoolAddressesProvider.sol";
 
 /**
  * @title IPool
@@ -53,5 +52,4 @@ interface IPool {
         uint256 amount,
         address to
     ) external returns (uint256);
-
 }
