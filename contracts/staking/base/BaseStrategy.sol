@@ -357,7 +357,7 @@ abstract contract BaseStrategy is Initializable {
     /**
      * @notice
      *  Used to change `minReportDelay`. `minReportDelay` is the minimum number
-     *  of blocks that should pass for `harvest()` to be called.
+     *  of seconds that should pass for `harvest()` to be called.
      *
      *  For external keepers, this is the minimum time between jobs to wait.
      *  (see `harvestTrigger()` for more details.)
@@ -373,7 +373,7 @@ abstract contract BaseStrategy is Initializable {
     /**
      * @notice
      *  Used to change `maxReportDelay`. `maxReportDelay` is the maximum number
-     *  of blocks that should pass for `harvest()` to be called.
+     *  of seconds that should pass for `harvest()` to be called.
      *
      *  For external keepers, this is the maximum time between jobs to wait.
      *  (see `harvestTrigger()` for more details.)
