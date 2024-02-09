@@ -1,6 +1,7 @@
 # VIMworld Solidity Project
 # Specifications
 ### Project Overview
+This project offers users a financial management platform where they can invest in various types of tokens such as ETH, USDT, and OJEE. The platform is responsible for interfacing with three staking pools: Lido, AAVE, and OJEEFarmPool. It stakes users' investments in the corresponding staking pools, helping users earn financial returns in ETH, USDT, or OJEE.
 
 ### Functional, Technical Requirements
 Functional and Technical Requirements can be found in the [Requirements.pdf](./docs/Requirements.pdf) document
