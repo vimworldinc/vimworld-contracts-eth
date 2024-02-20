@@ -153,6 +153,43 @@ export const failurePermissionFunctionWithMsg = async (
     }
 };
 
+export const checkPermissionFunctionWithCustomError = async (
+    successAccounts: any,
+    failureAccounts: any,
+    customErrorName: any,
+    contractObj: any,
+    functionName: any,
+    ...params: any
+) => {
+    await failurePermissionFunctionWithCustomError(
+        failureAccounts,
+        customErrorName,
+        contractObj,
+        functionName,
+        ...params,
+    );
+    let snapshot = await takeSnapshot();
+    for (let account of successAccounts) {
+        await expect(contractObj.connect(account)[functionName](...params)).not
+            .to.be.reverted;
+        await snapshot.restore();
+    }
+};
+
+export const failurePermissionFunctionWithCustomError = async (
+    failureAccounts: any,
+    customErrorName: any,
+    contractObj: any,
+    functionName: any,
+    ...params: any
+) => {
+    for (let account of failureAccounts) {
+        await expect(
+            contractObj.connect(account)[functionName](...params),
+        ).to.be.revertedWithCustomError(contractObj, customErrorName);
+    }
+};
+
 export const deployUpgradeableTestContract = async (
     contractName: any,
     proxyAdmin: any,

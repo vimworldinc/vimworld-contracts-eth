@@ -6,7 +6,7 @@ import {
     formatUTPatternTitle,
     x18,
     MaxUint256,
-    checkPermissionFunctionWithMsg,
+    checkPermissionFunctionWithCustomError,
     anyValue,
     ZeroAddress,
     toBig,
@@ -197,7 +197,10 @@ describe(formatUTContractTitle("GenericAaveV3"), function () {
                     ct_TestProtocolDataPrivider.address,
                     "AaveV3",
                 ),
-            ).to.be.revertedWith("Lender already initialized");
+            ).to.be.revertedWithCustomError(
+                ct_GenericAaveV3,
+                "ErrorLenderAlreadyInitialized",
+            );
             await ct_GenericAaveV3.clearStrategy();
             await expect(
                 ct_GenericAaveV3.reinitialize(
@@ -205,7 +208,23 @@ describe(formatUTContractTitle("GenericAaveV3"), function () {
                     ct_TestProtocolDataPrivider.address,
                     "AaveV3",
                 ),
-            ).to.be.revertedWith("GenericAave already initialized");
+            ).to.be.revertedWithCustomError(
+                ct_GenericAaveV3,
+                "ErrorGenericAaveAlreadyInitialized",
+            );
+        });
+
+        it("Unsuccessful: deployment. \tReason: zero address", async () => {
+            await expect(
+                ct_GenericAaveV3.reinitialize(
+                    ZeroAddress,
+                    ct_TestProtocolDataPrivider.address,
+                    "AaveV3",
+                ),
+            ).to.be.revertedWithCustomError(
+                ct_GenericAaveV3,
+                "ErrorStrategyZeroAddress",
+            );
         });
     });
 
@@ -216,40 +235,40 @@ describe(formatUTContractTitle("GenericAaveV3"), function () {
 
         it("Successful: test function setParams only by permission", async () => {
             // management
-            await checkPermissionFunctionWithMsg(
+            await checkPermissionFunctionWithCustomError(
                 [vaultGovernance, vaultManagement, ct_Strategy_role],
                 [normalAccount],
-                "!Management",
+                "ErrorNotManagement",
                 ct_GenericAaveV3,
                 "setDust",
                 0,
             );
 
             // management
-            await checkPermissionFunctionWithMsg(
+            await checkPermissionFunctionWithCustomError(
                 [vaultGovernance, vaultManagement, ct_Strategy_role],
                 [normalAccount],
-                "!Management",
+                "ErrorNotManagement",
                 ct_GenericAaveV3,
                 "setReferralCode",
                 1,
             );
 
             // onlyGovernance
-            await checkPermissionFunctionWithMsg(
+            await checkPermissionFunctionWithCustomError(
                 [vaultGovernance],
                 [vaultManagement, ct_Strategy_role, normalAccount],
-                "!Governance",
+                "ErrorNotGovernance",
                 ct_GenericAaveV3,
                 "emergencyWithdraw",
                 0,
             );
 
             // management
-            await checkPermissionFunctionWithMsg(
+            await checkPermissionFunctionWithCustomError(
                 [vaultGovernance, vaultManagement, ct_Strategy_role],
                 [normalAccount],
-                "!Management",
+                "ErrorNotManagement",
                 ct_GenericAaveV3,
                 "withdrawAll",
             );
@@ -270,10 +289,10 @@ describe(formatUTContractTitle("GenericAaveV3"), function () {
             ).to.be.equal(0);
 
             // management
-            await checkPermissionFunctionWithMsg(
+            await checkPermissionFunctionWithCustomError(
                 [vaultGovernance, vaultManagement, ct_Strategy_role],
                 [normalAccount],
-                "!Management",
+                "ErrorNotManagement",
                 ct_GenericAaveV3,
                 "sweep",
                 ct_newToken.address,
@@ -298,18 +317,27 @@ describe(formatUTContractTitle("GenericAaveV3"), function () {
                 ct_GenericAaveV3
                     .connect(vaultGovernance)
                     .sweep(ct_USDT.address),
-            ).to.be.revertedWith("!Protected");
+            ).to.be.revertedWithCustomError(
+                ct_GenericAaveV3,
+                "ErrorShouldNotProtected",
+            );
             await expect(
                 ct_GenericAaveV3
                     .connect(vaultGovernance)
                     .sweep(ct_AToken.address),
-            ).to.be.revertedWith("!Protected");
+            ).to.be.revertedWithCustomError(
+                ct_GenericAaveV3,
+                "ErrorShouldNotProtected",
+            );
         });
 
         it("Unsuccessful: Called setReferralCode. \tReason: invalid code", async () => {
             await expect(
                 ct_GenericAaveV3.connect(vaultGovernance).setReferralCode(0),
-            ).to.be.revertedWith("Invalid referral code");
+            ).to.be.revertedWithCustomError(
+                ct_GenericAaveV3,
+                "ErrorInvalidReferralCode",
+            );
         });
     });
 
@@ -324,10 +352,10 @@ describe(formatUTContractTitle("GenericAaveV3"), function () {
             );
             let share = 0;
             // deposit permission, management
-            await checkPermissionFunctionWithMsg(
+            await checkPermissionFunctionWithCustomError(
                 [vaultGovernance, vaultManagement, ct_Strategy_role],
                 [normalAccount],
-                "!Management",
+                "ErrorNotManagement",
                 ct_GenericAaveV3,
                 "deposit",
             );
@@ -428,10 +456,10 @@ describe(formatUTContractTitle("GenericAaveV3"), function () {
             let share = 0;
 
             // withdraw permission: management
-            await checkPermissionFunctionWithMsg(
+            await checkPermissionFunctionWithCustomError(
                 [vaultGovernance, vaultManagement, ct_Strategy_role],
                 [normalAccount],
-                "!Management",
+                "ErrorNotManagement",
                 ct_GenericAaveV3,
                 "withdraw",
                 0,

@@ -14,10 +14,10 @@ import {IERC20TokenFarmPool} from "../interfaces/IERC20TokenFarmPool.sol";
 contract OJEEStrategyToFarm is BaseStrategy {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    uint256 public constant SECONDSPERYEAR = 31556952;
-
     IERC20TokenFarmPool public tokenFarmPool;
     uint256 public withdrawalThreshold;
+
+    error ErrorTokenFarmPoolZeroAddress();
 
     /**
      * @notice Initializes the Strategy. This function is called only once when the
@@ -36,7 +36,9 @@ contract OJEEStrategyToFarm is BaseStrategy {
     function __OJEEStrategyToFarm_init_unchained(
         address tokenFarmPoolAddress_
     ) internal onlyInitializing {
-        require(tokenFarmPoolAddress_ != address(0), "Invalid zero address");
+        if (tokenFarmPoolAddress_ == address(0)) {
+            revert ErrorTokenFarmPoolZeroAddress();
+        }
 
         maxReportDelay = 1814400;
         profitFactor = 100;
@@ -44,9 +46,13 @@ contract OJEEStrategyToFarm is BaseStrategy {
 
         tokenFarmPool = IERC20TokenFarmPool(tokenFarmPoolAddress_);
 
-        IERC20Upgradeable(address(want)).safeApprove(
+        uint256 allowance_ = IERC20Upgradeable(address(want)).allowance(
+            address(this),
+            tokenFarmPoolAddress_
+        );
+        IERC20Upgradeable(address(want)).safeIncreaseAllowance(
             tokenFarmPoolAddress_,
-            type(uint256).max
+            type(uint256).max - allowance_
         );
     }
 
@@ -57,10 +63,26 @@ contract OJEEStrategyToFarm is BaseStrategy {
     }
 
     function setFarmPool(address pool_) external onlyAuthorized {
-        require(pool_ != address(0), "Invalid zero address");
-        IERC20Upgradeable(address(want)).safeApprove(address(tokenFarmPool), 0);
+        if (pool_ == address(0)) {
+            revert ErrorTokenFarmPoolZeroAddress();
+        }
+        uint256 decAllowance_ = IERC20Upgradeable(address(want)).allowance(
+            address(this),
+            address(tokenFarmPool)
+        );
+        IERC20Upgradeable(address(want)).safeDecreaseAllowance(
+            address(tokenFarmPool),
+            decAllowance_
+        );
         tokenFarmPool = IERC20TokenFarmPool(pool_);
-        IERC20Upgradeable(address(want)).safeApprove(pool_, type(uint256).max);
+        uint256 incAllowance_ = IERC20Upgradeable(address(want)).allowance(
+            address(this),
+            pool_
+        );
+        IERC20Upgradeable(address(want)).safeIncreaseAllowance(
+            pool_,
+            type(uint256).max - incAllowance_
+        );
     }
 
     /**

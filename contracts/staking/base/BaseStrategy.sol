@@ -104,6 +104,24 @@ abstract contract BaseStrategy is Initializable {
     event SetHealthCheck(address healthCheck);
     event SetDoHealthCheck(bool isDo);
 
+    error ErrorVaultZeroAddress();
+    error ErrorStrategyZeroAddress();
+    error ErrorKeeperZeroAddress();
+    error ErrorStrategyAlreadyInitialized();
+    error ErrorNotVault();
+    error ErrorNotShares();
+    error ErrorNotHealthCheck();
+    error ErrorShouldNotWant();
+    error ErrorShouldNotVault();
+    error ErrorShouldNotProtected();
+    error ErrorNotAuthorized();
+    error ErrorNotEmergencyAuthorized();
+    error ErrorNotStrategist();
+    error ErrorNotGovernance();
+    error ErrorNotKeeper();
+    error ErrorNotVaultManager();
+    error ErrorVaultOfNewStrategyDoesNotMatch();
+
     /**
      * @notice
      *  Initializes the Strategy. This is called only once when the
@@ -128,11 +146,17 @@ abstract contract BaseStrategy is Initializable {
         address strategist_,
         address keeper_
     ) internal onlyInitializing {
-        require(address(want) == address(0), "Strategy already initialized");
+        if (address(vault_) == address(0)) {
+            revert ErrorVaultZeroAddress();
+        }
+        if (address(want) != address(0)) {
+            revert ErrorStrategyAlreadyInitialized();
+        }
 
         vault = IVault(vault_);
         want = IERC20Upgradeable(vault.token());
-        want.safeApprove(vault_, type(uint256).max); // Give Vault unlimited access (might save gas)
+        uint256 allowance_ = want.allowance(address(this), vault_);
+        want.safeIncreaseAllowance(vault_, type(uint256).max - allowance_); // Give Vault unlimited access (might save gas)
         strategist = strategist_;
         keeper = keeper_;
 
@@ -204,16 +228,19 @@ abstract contract BaseStrategy is Initializable {
 
         // Call healthCheck contract.
         if (doHealthCheck && healthCheck != address(0)) {
-            require(
-                IHealthCheck(healthCheck).check(
-                    profit_,
-                    loss_,
-                    debtPayment_,
-                    debtOutstanding_,
-                    totalDebt_
-                ),
-                "!Healthcheck"
-            );
+            if (
+                !(
+                    IHealthCheck(healthCheck).check(
+                        profit_,
+                        loss_,
+                        debtPayment_,
+                        debtOutstanding_,
+                        totalDebt_
+                    )
+                )
+            ) {
+                revert ErrorNotHealthCheck();
+            }
         } else {
             doHealthCheck = true;
             emit SetDoHealthCheck(true);
@@ -231,7 +258,9 @@ abstract contract BaseStrategy is Initializable {
      * @return loss_ Any realized losses.
      */
     function withdraw(uint256 amountNeeded_) external returns (uint256 loss_) {
-        require(msg.sender == address(vault), "!Vault");
+        if (msg.sender != address(vault)) {
+            revert ErrorNotVault();
+        }
         // Liquidate as much as possible to `want`, up to `amountNeeded_`.
         uint256 amountFreed_;
         (amountFreed_, loss_) = _liquidatePosition(amountNeeded_);
@@ -253,11 +282,12 @@ abstract contract BaseStrategy is Initializable {
      * @param newStrategy_ The Strategy to migrate to.
      */
     function migrate(address newStrategy_) external {
-        require(msg.sender == address(vault), "!Vault");
-        require(
-            BaseStrategy(newStrategy_).vault() == vault,
-            "Vault of new strategy does not match"
-        );
+        if (msg.sender != address(vault)) {
+            revert ErrorNotVault();
+        }
+        if (BaseStrategy(newStrategy_).vault() != vault) {
+            revert ErrorVaultOfNewStrategyDoesNotMatch();
+        }
         _prepareMigration(newStrategy_);
         want.safeTransfer(newStrategy_, want.balanceOf(address(this)));
     }
@@ -299,12 +329,20 @@ abstract contract BaseStrategy is Initializable {
      * @param token_ The token to transfer out of this vault.
      */
     function sweep(address token_) external onlyGovernance {
-        require(token_ != address(want), "!Want");
-        require(token_ != address(vault), "!Shares");
+        if (token_ == address(want)) {
+            revert ErrorShouldNotWant();
+        }
+        if (token_ == address(vault)) {
+            revert ErrorShouldNotVault();
+        }
 
         address[] memory protectedTokens_ = _protectedTokens();
-        for (uint256 i; i < protectedTokens_.length; i++)
-            require(token_ != protectedTokens_[i], "!Protected");
+        uint256 len_ = protectedTokens_.length;
+        for (uint256 i; i < len_; i++) {
+            if (token_ == protectedTokens_[i]) {
+                revert ErrorShouldNotProtected();
+            }
+        }
 
         IERC20Upgradeable(token_).safeTransfer(
             _governance(),
@@ -330,7 +368,9 @@ abstract contract BaseStrategy is Initializable {
      * @param strategist_ The new address to assign as `strategist`.
      */
     function setStrategist(address strategist_) external onlyAuthorized {
-        require(strategist_ != address(0), "Invalid zero address");
+        if (strategist_ == address(0)) {
+            revert ErrorStrategyZeroAddress();
+        }
         strategist = strategist_;
         emit UpdatedStrategist(strategist_);
     }
@@ -349,7 +389,9 @@ abstract contract BaseStrategy is Initializable {
      * @param keeper_ The new address to assign as `keeper`.
      */
     function setKeeper(address keeper_) external onlyAuthorized {
-        require(keeper_ != address(0), "Invalid zero address");
+        if (keeper_ == address(0)) {
+            revert ErrorKeeperZeroAddress();
+        }
         keeper = keeper_;
         emit UpdatedKeeper(keeper_);
     }
@@ -722,46 +764,50 @@ abstract contract BaseStrategy is Initializable {
     }
 
     function _onlyAuthorized() internal view {
-        require(
-            msg.sender == strategist || msg.sender == _governance(),
-            "!Authorized"
-        );
+        if (msg.sender != strategist && msg.sender != _governance()) {
+            revert ErrorNotAuthorized();
+        }
     }
 
     function _onlyEmergencyAuthorized() internal view {
-        require(
-            msg.sender == strategist ||
-                msg.sender == _governance() ||
-                msg.sender == vault.guardian() ||
-                msg.sender == vault.management(),
-            "!Emergency authorized"
-        );
+        if (
+            msg.sender != strategist &&
+            msg.sender != _governance() &&
+            msg.sender != vault.guardian() &&
+            msg.sender != vault.management()
+        ) {
+            revert ErrorNotEmergencyAuthorized();
+        }
     }
 
     function _onlyStrategist() internal view {
-        require(msg.sender == strategist, "!Strategist");
+        if (msg.sender != strategist) {
+            revert ErrorNotStrategist();
+        }
     }
 
     function _onlyGovernance() internal view {
-        require(msg.sender == _governance(), "!Governance");
+        if (msg.sender != _governance()) {
+            revert ErrorNotGovernance();
+        }
     }
 
     function _onlyKeepers() internal view {
-        require(
-            msg.sender == keeper ||
-                msg.sender == strategist ||
-                msg.sender == _governance() ||
-                msg.sender == vault.guardian() ||
-                msg.sender == vault.management(),
-            "!Keeper"
-        );
+        if (
+            msg.sender != keeper &&
+            msg.sender != strategist &&
+            msg.sender != _governance() &&
+            msg.sender != vault.guardian() &&
+            msg.sender != vault.management()
+        ) {
+            revert ErrorNotKeeper();
+        }
     }
 
     function _onlyVaultManagers() internal view {
-        require(
-            msg.sender == vault.management() || msg.sender == _governance(),
-            "!Vault manager"
-        );
+        if (msg.sender != vault.management() && msg.sender != _governance()) {
+            revert ErrorNotVaultManager();
+        }
     }
 
     /**

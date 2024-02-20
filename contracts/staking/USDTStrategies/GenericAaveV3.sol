@@ -30,6 +30,9 @@ contract GenericAaveV3 is GenericLenderBase {
 
     uint16 internal _customReferral;
 
+    error ErrorGenericAaveAlreadyInitialized();
+    error ErrorInvalidReferralCode();
+
     /**
      * @notice Initializes the contract, this is called only once, when the
      *  contract is deployed.
@@ -45,23 +48,28 @@ contract GenericAaveV3 is GenericLenderBase {
     }
 
     function __GenericAaveV3_init_unchained() internal onlyInitializing {
-        require(
-            address(aToken) == address(0),
-            "GenericAave already initialized"
-        );
+        if (address(aToken) != address(0)) {
+            revert ErrorGenericAaveAlreadyInitialized();
+        }
 
         aToken = IAToken(
             _lendingPool().getReserveData(address(want)).aTokenAddress
         );
 
-        IERC20Upgradeable(address(want)).safeApprove(
+        uint256 allowance_ = IERC20Upgradeable(address(want)).allowance(
+            address(this),
+            address(_lendingPool())
+        );
+        IERC20Upgradeable(address(want)).safeIncreaseAllowance(
             address(_lendingPool()),
-            type(uint256).max
+            type(uint256).max - allowance_
         );
     }
 
     function setReferralCode(uint16 customReferral_) external management {
-        require(customReferral_ != 0, "Invalid referral code");
+        if (customReferral_ == 0) {
+            revert ErrorInvalidReferralCode();
+        }
         _customReferral = customReferral_;
     }
 
@@ -220,10 +228,13 @@ contract GenericAaveV3 is GenericLenderBase {
         //     i) initial allowance has been used (should take years)
         //     ii) lendingPool contract address has changed (Aave updated the contract address)
         if (want.allowance(address(this), address(lp_)) < amount_) {
-            IERC20Upgradeable(address(want)).safeApprove(address(lp_), 0);
-            IERC20Upgradeable(address(want)).safeApprove(
+            uint256 allowance_ = IERC20Upgradeable(address(want)).allowance(
+                address(this),
+                address(lp_)
+            );
+            IERC20Upgradeable(address(want)).safeIncreaseAllowance(
                 address(lp_),
-                type(uint256).max
+                type(uint256).max - allowance_
             );
         }
 

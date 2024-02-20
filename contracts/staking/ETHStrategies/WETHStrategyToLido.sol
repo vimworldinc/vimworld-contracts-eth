@@ -19,13 +19,13 @@ import {BaseStrategy} from "../base/BaseStrategy.sol";
 contract WETHStrategyToLido is BaseStrategy {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    ICurveFi public constant STABLE_SWAP_STETH =
+    ICurveFi private constant _STABLE_SWAP_STETH =
         ICurveFi(0xDC24316b9AE028F1497c275EB9192a3Ea0f67022);
-    IWETH public constant WETH =
+    IWETH private constant _WETH =
         IWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
-    ISteth public constant STETH =
+    ISteth private constant _STETH =
         ISteth(0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84);
-    uint256 public constant DENOMINATOR = 10_000;
+    uint256 private constant _DENOMINATOR = 10_000;
 
     int128 private constant _WETHID = 0;
     int128 private constant _STETHID = 1;
@@ -38,6 +38,9 @@ contract WETHStrategyToLido is BaseStrategy {
     bool public dontInvest; // false
 
     uint256 public peg; // 100 = 1%
+
+    error ErrorPegExceedLimit();
+    error ErrorSlippageProtectionOutExceedLimit();
 
     receive() external payable {}
 
@@ -59,7 +62,14 @@ contract WETHStrategyToLido is BaseStrategy {
         debtThreshold = 400 * 1e18;
         _referal = address(0);
 
-        _stETH().approve(address(_stableSwapSTETH()), type(uint256).max);
+        uint256 allowance_ = _stETH().allowance(
+            address(this),
+            address(_stableSwapSTETH())
+        );
+        IERC20Upgradeable(address(_stETH())).safeIncreaseAllowance(
+            address(_stableSwapSTETH()),
+            type(uint256).max - allowance_
+        );
 
         maxSingleTrade = 10_000 * 1e18;
         slippageProtectionOut = 150;
@@ -79,7 +89,10 @@ contract WETHStrategyToLido is BaseStrategy {
     }
 
     function updatePeg(uint256 peg_) external onlyVaultManagers {
-        require(peg_ <= 1_000, "Exceed limit"); // Limit peg to a maximum of 10%
+        // Limit peg to a maximum of 10%
+        if (peg_ > 1_000) {
+            revert ErrorPegExceedLimit();
+        }
         peg = peg_;
     }
 
@@ -94,7 +107,9 @@ contract WETHStrategyToLido is BaseStrategy {
     function updateSlippageProtectionOut(
         uint256 slippageProtectionOut_
     ) external onlyVaultManagers {
-        require(slippageProtectionOut_ <= 10_000, "Exceed limit");
+        if (slippageProtectionOut_ > 10_000) {
+            revert ErrorSlippageProtectionOutExceedLimit();
+        }
         slippageProtectionOut = slippageProtectionOut_;
     }
 
@@ -123,8 +138,8 @@ contract WETHStrategyToLido is BaseStrategy {
      */
     function estimatedTotalAssets() public view override returns (uint256) {
         return
-            (stethBalance() * (DENOMINATOR - peg)) /
-            DENOMINATOR +
+            (stethBalance() * (_DENOMINATOR - peg)) /
+            _DENOMINATOR +
             wantBalance();
     }
 
@@ -260,7 +275,7 @@ contract WETHStrategyToLido is BaseStrategy {
         uint256 before_ = wantBalance();
 
         uint256 slippageAllowance_ = (amount_ *
-            (DENOMINATOR - slippageProtectionOut)) / DENOMINATOR;
+            (_DENOMINATOR - slippageProtectionOut)) / _DENOMINATOR;
         _stableSwapSTETH().exchange(
             _STETHID,
             _WETHID,
@@ -318,14 +333,14 @@ contract WETHStrategyToLido is BaseStrategy {
     }
 
     function _stableSwapSTETH() internal view virtual returns (ICurveFi) {
-        return STABLE_SWAP_STETH;
+        return _STABLE_SWAP_STETH;
     }
 
     function _weth() internal view virtual returns (IWETH) {
-        return WETH;
+        return _WETH;
     }
 
     function _stETH() internal view virtual returns (ISteth) {
-        return STETH;
+        return _STETH;
     }
 }

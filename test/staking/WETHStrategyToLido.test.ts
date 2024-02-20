@@ -12,7 +12,7 @@ import {
     x18,
     mineIncreasedTime,
     MaxUint256,
-    checkPermissionFunctionWithMsg,
+    checkPermissionFunctionWithCustomError,
     anyValue,
     getBlockTime,
     ZeroAddress,
@@ -44,7 +44,7 @@ describe(formatUTContractTitle("WETHStrategyToLido"), function () {
     let vaultManagement: any;
     let vaultGuardian: any;
     let strategistRoler: any;
-    let keeperRole: any;
+    let keeperRoler: any;
     let rewardRoler: any;
     let owner: any;
     let adminRoler;
@@ -66,7 +66,7 @@ describe(formatUTContractTitle("WETHStrategyToLido"), function () {
         vaultManagement = otherAccounts.shift();
         vaultGuardian = otherAccounts.shift();
         strategistRoler = otherAccounts.shift();
-        keeperRole = otherAccounts.shift();
+        keeperRoler = otherAccounts.shift();
         rewardRoler = otherAccounts.shift();
         adminRoler = otherAccounts.shift();
         minter = otherAccounts.shift();
@@ -220,100 +220,100 @@ describe(formatUTContractTitle("WETHStrategyToLido"), function () {
                 .setStrategist(strategistRoler.address);
             await ct_WETHStrategyToLido
                 .connect(vaultGovernance)
-                .setKeeper(keeperRole.address);
+                .setKeeper(keeperRoler.address);
         });
 
         it("Successful: test function setParams only by permission", async () => {
             // onlyEmergencyAuthorized
-            await checkPermissionFunctionWithMsg(
+            await checkPermissionFunctionWithCustomError(
                 [
                     vaultGovernance,
                     vaultManagement,
                     vaultGuardian,
                     strategistRoler,
                 ],
-                [keeperRole, normalAccount],
-                "!Emergency authorized",
+                [keeperRoler, normalAccount],
+                "ErrorNotEmergencyAuthorized",
                 ct_WETHStrategyToLido,
                 "updateReferal",
                 owner.address,
             );
 
             // onlyVaultManagers
-            await checkPermissionFunctionWithMsg(
+            await checkPermissionFunctionWithCustomError(
                 [vaultGovernance, vaultManagement],
-                [vaultGuardian, strategistRoler, keeperRole, normalAccount],
-                "!Vault manager",
+                [vaultGuardian, strategistRoler, keeperRoler, normalAccount],
+                "ErrorNotVaultManager",
                 ct_WETHStrategyToLido,
                 "updateMaxSingleTrade",
                 x18(10000),
             );
 
             // onlyVaultManagers
-            await checkPermissionFunctionWithMsg(
+            await checkPermissionFunctionWithCustomError(
                 [vaultGovernance, vaultManagement],
-                [vaultGuardian, strategistRoler, keeperRole, normalAccount],
-                "!Vault manager",
+                [vaultGuardian, strategistRoler, keeperRoler, normalAccount],
+                "ErrorNotVaultManager",
                 ct_WETHStrategyToLido,
                 "updatePeg",
                 100,
             );
 
             // onlyVaultManagers
-            await checkPermissionFunctionWithMsg(
+            await checkPermissionFunctionWithCustomError(
                 [vaultGovernance, vaultManagement],
-                [vaultGuardian, strategistRoler, keeperRole, normalAccount],
-                "!Vault manager",
+                [vaultGuardian, strategistRoler, keeperRoler, normalAccount],
+                "ErrorNotVaultManager",
                 ct_WETHStrategyToLido,
                 "updateReportLoss",
                 false,
             );
 
             // onlyVaultManagers
-            await checkPermissionFunctionWithMsg(
+            await checkPermissionFunctionWithCustomError(
                 [vaultGovernance, vaultManagement],
-                [vaultGuardian, strategistRoler, keeperRole, normalAccount],
-                "!Vault manager",
+                [vaultGuardian, strategistRoler, keeperRoler, normalAccount],
+                "ErrorNotVaultManager",
                 ct_WETHStrategyToLido,
                 "updateDontInvest",
                 false,
             );
 
             // onlyVaultManagers
-            await checkPermissionFunctionWithMsg(
+            await checkPermissionFunctionWithCustomError(
                 [vaultGovernance, vaultManagement],
-                [vaultGuardian, strategistRoler, keeperRole, normalAccount],
-                "!Vault manager",
+                [vaultGuardian, strategistRoler, keeperRoler, normalAccount],
+                "ErrorNotVaultManager",
                 ct_WETHStrategyToLido,
                 "updateSlippageProtectionOut",
                 50,
             );
 
             // onlyEmergencyAuthorized
-            await checkPermissionFunctionWithMsg(
+            await checkPermissionFunctionWithCustomError(
                 [
                     vaultGovernance,
                     vaultManagement,
                     vaultGuardian,
                     strategistRoler,
                 ],
-                [keeperRole, normalAccount],
-                "!Emergency authorized",
+                [keeperRoler, normalAccount],
+                "ErrorNotEmergencyAuthorized",
                 ct_WETHStrategyToLido,
                 "invest",
                 0,
             );
 
             // onlyEmergencyAuthorized
-            await checkPermissionFunctionWithMsg(
+            await checkPermissionFunctionWithCustomError(
                 [
                     vaultGovernance,
                     vaultManagement,
                     vaultGuardian,
                     strategistRoler,
                 ],
-                [keeperRole, normalAccount],
-                "!Emergency authorized",
+                [keeperRoler, normalAccount],
+                "ErrorNotEmergencyAuthorized",
                 ct_WETHStrategyToLido,
                 "rescueStuckEth",
             );
@@ -333,16 +333,16 @@ describe(formatUTContractTitle("WETHStrategyToLido"), function () {
                 await ct_newToken.balanceOf(vaultGovernance.address),
             ).to.be.equal(0);
 
-            await checkPermissionFunctionWithMsg(
+            await checkPermissionFunctionWithCustomError(
                 [vaultGovernance],
                 [
                     vaultManagement,
                     vaultGuardian,
                     strategistRoler,
-                    keeperRole,
+                    keeperRoler,
                     normalAccount,
                 ],
-                "!Governance",
+                "ErrorNotGovernance",
                 ct_WETHStrategyToLido,
                 "sweep",
                 ct_newToken.address,
@@ -367,13 +367,19 @@ describe(formatUTContractTitle("WETHStrategyToLido"), function () {
                 ct_WETHStrategyToLido
                     .connect(vaultGovernance)
                     .sweep(ct_Steth.address),
-            ).to.be.revertedWith("!Protected");
+            ).to.be.revertedWithCustomError(
+                ct_WETHStrategyToLido,
+                "ErrorShouldNotProtected",
+            );
         });
 
         it("Unsuccessful: Called updatePeg. \tReason: exceed limit", async () => {
             await expect(
                 ct_WETHStrategyToLido.connect(vaultGovernance).updatePeg(1001),
-            ).to.be.revertedWith("Exceed limit");
+            ).to.be.revertedWithCustomError(
+                ct_WETHStrategyToLido,
+                "ErrorPegExceedLimit",
+            );
             await expect(
                 ct_WETHStrategyToLido.connect(vaultGovernance).updatePeg(1000),
             ).not.to.be.reverted;
@@ -384,7 +390,10 @@ describe(formatUTContractTitle("WETHStrategyToLido"), function () {
                 ct_WETHStrategyToLido
                     .connect(vaultGovernance)
                     .updateSlippageProtectionOut(10001),
-            ).to.be.revertedWith("Exceed limit");
+            ).to.be.revertedWithCustomError(
+                ct_WETHStrategyToLido,
+                "ErrorSlippageProtectionOutExceedLimit",
+            );
             await expect(
                 ct_WETHStrategyToLido
                     .connect(vaultGovernance)

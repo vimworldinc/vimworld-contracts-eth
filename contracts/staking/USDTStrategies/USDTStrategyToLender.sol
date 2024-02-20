@@ -22,10 +22,10 @@ import {BaseStrategy} from "../base/BaseStrategy.sol";
 contract USDTStrategyToLender is BaseStrategy {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    address public constant UNISWAP_ROUTER =
+    address private constant _UNISWAP_ROUTER =
         0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
-    address public constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
-    uint256 public constant SECONDSPERYEAR = 31556952;
+    address private constant _WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    uint256 private constant _SECONDSPERYEAR = 31556952;
 
     struct LenderRatio {
         address lender;
@@ -46,6 +46,12 @@ contract USDTStrategyToLender is BaseStrategy {
     IGenericLender[] public lenders;
     address public wantToEthOracle;
 
+    error ErrorUndockedLender();
+    error ErrorAlreadyAdded();
+    error ErrorNotLender();
+    error ErrorShareNotFull();
+    error ErrorWithdrawFailed();
+
     /**
      * @notice
      *  Initializes the Strategy, this is called only once when the
@@ -58,6 +64,9 @@ contract USDTStrategyToLender is BaseStrategy {
     }
 
     function __USDTStrategyToLender_init_unchained() internal onlyInitializing {
+        withdrawalThreshold = 0;
+        wantToEthOracle = address(0);
+
         maxReportDelay = 1814400;
         profitFactor = 10000;
         debtThreshold = 1000000 * 10 ** 6;
@@ -83,10 +92,15 @@ contract USDTStrategyToLender is BaseStrategy {
      */
     function addLender(address lenderAddress_) public onlyGovernance {
         IGenericLender lend_ = IGenericLender(lenderAddress_);
-        require(lend_.strategy() == address(this), "Undocked Lender");
+        if (lend_.strategy() != address(this)) {
+            revert ErrorUndockedLender();
+        }
 
-        for (uint256 i = 0; i < lenders.length; i++) {
-            require(lenderAddress_ != address(lenders[i]), "Already added");
+        uint256 len_ = lenders.length;
+        for (uint256 i = 0; i < len_; i++) {
+            if (lenderAddress_ == address(lenders[i])) {
+                revert ErrorAlreadyAdded();
+            }
         }
         lenders.push(lend_);
     }
@@ -125,7 +139,9 @@ contract USDTStrategyToLender is BaseStrategy {
                     found_ = true;
                 }
             }
-            require(found_, "Not lender");
+            if (!found_) {
+                revert ErrorNotLender();
+            }
 
             share_ = share_ + newPositions_[i].share;
             uint256 toSend_ = (assets * newPositions_[i].share) / 1000;
@@ -133,7 +149,9 @@ contract USDTStrategyToLender is BaseStrategy {
             IGenericLender(newPositions_[i].lender).deposit();
         }
 
-        require(share_ == 1000, "Share!=1000");
+        if (share_ != 1000) {
+            revert ErrorShareNotFull();
+        }
     }
 
     /**
@@ -195,7 +213,7 @@ contract USDTStrategyToLender is BaseStrategy {
             uint256 profitIncrease_ = (((nav_ *
                 potential_ -
                 nav_ *
-                lowestApr_) / 1e18) * maxReportDelay) / SECONDSPERYEAR;
+                lowestApr_) / 1e18) * maxReportDelay) / _SECONDSPERYEAR;
 
             uint256 wantCallCost_ = ethToWant(callCost_);
 
@@ -540,8 +558,8 @@ contract USDTStrategyToLender is BaseStrategy {
             if (lenderAddress_ == address(lenders[i])) {
                 bool allWithdrawn_ = lenders[i].withdrawAll();
 
-                if (!force_) {
-                    require(allWithdrawn_, "Withdraw failed");
+                if ((!force_) && (!allWithdrawn_)) {
+                    revert ErrorWithdrawFailed();
                 }
 
                 // Swap the last index with the current one
@@ -560,7 +578,7 @@ contract USDTStrategyToLender is BaseStrategy {
                 return;
             }
         }
-        revert("Not lender");
+        revert ErrorNotLender();
     }
 
     /**
@@ -590,11 +608,11 @@ contract USDTStrategyToLender is BaseStrategy {
         virtual
         returns (IUniswapV2Router02)
     {
-        return IUniswapV2Router02(UNISWAP_ROUTER);
+        return IUniswapV2Router02(_UNISWAP_ROUTER);
     }
 
     function _weth() internal view virtual returns (address) {
-        return WETH;
+        return _WETH;
     }
 
     /**

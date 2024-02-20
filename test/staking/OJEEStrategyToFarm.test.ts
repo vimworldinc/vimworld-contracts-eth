@@ -14,6 +14,7 @@ import {
     ZeroAddress,
     deployContract,
     toBig,
+    checkPermissionFunctionWithCustomError,
 } from "../utils";
 import {
     deployProxyAdmin,
@@ -36,7 +37,7 @@ describe(formatUTContractTitle("OJEEStrategyToFarm"), function () {
     let vaultManagement: any;
     let vaultGuardian: any;
     let strategistRoler: any;
-    let keeper: any;
+    let keeperRoler: any;
     let foundationWallet: any;
     let normalAccount: any;
     let otherAccounts: any;
@@ -52,7 +53,7 @@ describe(formatUTContractTitle("OJEEStrategyToFarm"), function () {
         vaultManagement = otherAccounts.shift();
         vaultGuardian = otherAccounts.shift();
         strategistRoler = otherAccounts.shift();
-        keeper = otherAccounts.shift();
+        keeperRoler = otherAccounts.shift();
         normalAccount = otherAccounts.shift();
         foundationWallet = otherAccounts.shift();
     });
@@ -161,7 +162,10 @@ describe(formatUTContractTitle("OJEEStrategyToFarm"), function () {
         it("Unsuccessful: deployment. \tReason: zero address", async () => {
             await expect(
                 ct_OJEEStrategyToFarm.reinitialize(ZeroAddress),
-            ).to.be.revertedWith("Invalid zero address");
+            ).to.be.revertedWithCustomError(
+                ct_OJEEStrategyToFarm,
+                "ErrorTokenFarmPoolZeroAddress",
+            );
         });
     });
 
@@ -172,16 +176,14 @@ describe(formatUTContractTitle("OJEEStrategyToFarm"), function () {
 
         it("Successful: Called setWithdrawalThreshold function only by authorized", async () => {
             let newValue = 1000;
-            await expect(
-                ct_OJEEStrategyToFarm
-                    .connect(vaultManagement)
-                    .setWithdrawalThreshold(newValue),
-            ).to.be.revertedWith("!Authorized");
-            await expect(
-                ct_OJEEStrategyToFarm
-                    .connect(vaultGuardian)
-                    .setWithdrawalThreshold(newValue),
-            ).to.be.revertedWith("!Authorized");
+            await checkPermissionFunctionWithCustomError(
+                [vaultGovernance, strategistRoler],
+                [vaultManagement, vaultGuardian, keeperRoler, normalAccount],
+                "ErrorNotAuthorized",
+                ct_OJEEStrategyToFarm,
+                "setWithdrawalThreshold",
+                newValue,
+            );
 
             await expect(
                 ct_OJEEStrategyToFarm
@@ -204,21 +206,22 @@ describe(formatUTContractTitle("OJEEStrategyToFarm"), function () {
 
         it("Successful: Called setFarmPool function only by authorized", async () => {
             let newValue = otherAccounts[0].address;
-            await expect(
-                ct_OJEEStrategyToFarm
-                    .connect(vaultManagement)
-                    .setFarmPool(newValue),
-            ).to.be.revertedWith("!Authorized");
-            await expect(
-                ct_OJEEStrategyToFarm
-                    .connect(vaultGuardian)
-                    .setFarmPool(newValue),
-            ).to.be.revertedWith("!Authorized");
+            await checkPermissionFunctionWithCustomError(
+                [vaultGovernance, strategistRoler],
+                [vaultManagement, vaultGuardian, keeperRoler, normalAccount],
+                "ErrorNotAuthorized",
+                ct_OJEEStrategyToFarm,
+                "setFarmPool",
+                newValue,
+            );
             await expect(
                 ct_OJEEStrategyToFarm
                     .connect(vaultGovernance)
                     .setFarmPool(ZeroAddress),
-            ).to.be.revertedWith("Invalid zero address");
+            ).to.be.revertedWithCustomError(
+                ct_OJEEStrategyToFarm,
+                "ErrorTokenFarmPoolZeroAddress",
+            );
 
             await expect(
                 ct_OJEEStrategyToFarm
@@ -277,23 +280,20 @@ describe(formatUTContractTitle("OJEEStrategyToFarm"), function () {
                 await ct_newToken.balanceOf(vaultGovernance.address),
             ).to.be.equal(0);
 
-            await expect(
-                ct_OJEEStrategyToFarm
-                    .connect(vaultManagement)
-                    .sweep(ct_newToken.address),
-            ).to.be.revertedWith("!Governance");
-
-            await expect(
-                ct_OJEEStrategyToFarm
-                    .connect(vaultGuardian)
-                    .sweep(ct_newToken.address),
-            ).to.be.revertedWith("!Governance");
-
-            await expect(
-                ct_OJEEStrategyToFarm
-                    .connect(strategistRoler)
-                    .sweep(ct_newToken.address),
-            ).to.be.revertedWith("!Governance");
+            await checkPermissionFunctionWithCustomError(
+                [vaultGovernance],
+                [
+                    vaultManagement,
+                    vaultGuardian,
+                    strategistRoler,
+                    keeperRoler,
+                    normalAccount,
+                ],
+                "ErrorNotGovernance",
+                ct_OJEEStrategyToFarm,
+                "sweep",
+                ct_newToken.address,
+            );
 
             await expect(
                 ct_OJEEStrategyToFarm

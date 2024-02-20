@@ -11,7 +11,7 @@ import {
     MaxUint256,
     getBlockTime,
     ZeroAddress,
-    checkPermissionFunctionWithMsg,
+    checkPermissionFunctionWithCustomError,
     x_n,
     toBig,
     mineIncreasedTime,
@@ -170,28 +170,28 @@ describe(formatUTContractTitle("USDTStrategyToLender"), function () {
 
         it("Successful: test function setParams only by permission", async () => {
             // onlyAuthorized
-            await checkPermissionFunctionWithMsg(
+            await checkPermissionFunctionWithCustomError(
                 [vaultGovernance, strategistRoler],
                 [vaultManagement, vaultGuardian],
-                "!Authorized",
+                "ErrorNotAuthorized",
                 ct_USDTStrategyToLender,
                 "setWithdrawalThreshold",
                 1000,
             );
             // onlyAuthorized
-            await checkPermissionFunctionWithMsg(
+            await checkPermissionFunctionWithCustomError(
                 [vaultGovernance, strategistRoler],
                 [vaultManagement, vaultGuardian],
-                "!Authorized",
+                "ErrorNotAuthorized",
                 ct_USDTStrategyToLender,
                 "setPriceOracle",
                 ZeroAddress,
             );
             // onlyAuthorized
-            await checkPermissionFunctionWithMsg(
-                [],
+            await checkPermissionFunctionWithCustomError(
+                [vaultGovernance, strategistRoler],
                 [vaultManagement, vaultGuardian],
-                "!Authorized",
+                "ErrorNotAuthorized",
                 ct_USDTStrategyToLender,
                 "safeRemoveLender",
                 ct_GenericAaveV3.address,
@@ -210,10 +210,10 @@ describe(formatUTContractTitle("USDTStrategyToLender"), function () {
             await ct_USDTStrategyToLender.addLender(ct_GenericAaveV3.address);
 
             // onlyAuthorized
-            await checkPermissionFunctionWithMsg(
-                [],
+            await checkPermissionFunctionWithCustomError(
+                [vaultGovernance, strategistRoler],
                 [vaultManagement, vaultGuardian],
-                "!Authorized",
+                "ErrorNotAuthorized",
                 ct_USDTStrategyToLender,
                 "forceRemoveLender",
                 ct_GenericAaveV3.address,
@@ -230,10 +230,10 @@ describe(formatUTContractTitle("USDTStrategyToLender"), function () {
                     .forceRemoveLender(ct_GenericAaveV3.address),
             ).not.to.be.reverted;
             // onlyGovernance
-            await checkPermissionFunctionWithMsg(
+            await checkPermissionFunctionWithCustomError(
                 [vaultGovernance],
                 [vaultManagement, vaultGuardian, strategistRoler],
-                "!Governance",
+                "ErrorNotGovernance",
                 ct_USDTStrategyToLender,
                 "addLender",
                 ct_GenericAaveV3.address,
@@ -254,10 +254,10 @@ describe(formatUTContractTitle("USDTStrategyToLender"), function () {
                 await ct_newToken.balanceOf(vaultGovernance.address),
             ).to.be.equal(0);
 
-            await checkPermissionFunctionWithMsg(
+            await checkPermissionFunctionWithCustomError(
                 [vaultGovernance],
                 [vaultManagement, vaultGuardian, strategistRoler],
-                "!Governance",
+                "ErrorNotGovernance",
                 ct_USDTStrategyToLender,
                 "sweep",
                 ct_newToken.address,
@@ -296,12 +296,18 @@ describe(formatUTContractTitle("USDTStrategyToLender"), function () {
                 ct_USDTStrategyToLender.addLender(
                     ct_lenderWithOtherStrategy.address,
                 ),
-            ).to.be.revertedWith("Undocked Lender");
+            ).to.be.revertedWithCustomError(
+                ct_USDTStrategyToLender,
+                "ErrorUndockedLender",
+            );
 
             // Already added
             await expect(
                 ct_USDTStrategyToLender.addLender(ct_GenericAaveV3.address),
-            ).to.be.revertedWith("Already added");
+            ).to.be.revertedWithCustomError(
+                ct_USDTStrategyToLender,
+                "ErrorAlreadyAdded",
+            );
         });
 
         it("Successful: test function safeRemoveLender", async () => {
@@ -325,7 +331,10 @@ describe(formatUTContractTitle("USDTStrategyToLender"), function () {
             // lender is not exists
             await expect(
                 ct_USDTStrategyToLender.safeRemoveLender(normalAccount.address),
-            ).to.be.revertedWith("Not lender");
+            ).to.be.revertedWithCustomError(
+                ct_USDTStrategyToLender,
+                "ErrorNotLender",
+            );
 
             // Aave's usdt is not enough, revert
             expect(
@@ -333,7 +342,10 @@ describe(formatUTContractTitle("USDTStrategyToLender"), function () {
             ).to.be.above(await ct_USDT.balanceOf(ct_AToken.address));
             await expect(
                 ct_USDTStrategyToLender.safeRemoveLender(normalAccount.address),
-            ).to.be.revertedWith("Not lender");
+            ).to.be.revertedWithCustomError(
+                ct_USDTStrategyToLender,
+                "ErrorNotLender",
+            );
 
             // Aave's usdt is enough
             await ct_USDT
@@ -417,7 +429,10 @@ describe(formatUTContractTitle("USDTStrategyToLender"), function () {
                 ct_USDTStrategyToLender.forceRemoveLender(
                     normalAccount.address,
                 ),
-            ).to.be.revertedWith("Not lender");
+            ).to.be.revertedWithCustomError(
+                ct_USDTStrategyToLender,
+                "ErrorNotLender",
+            );
 
             // Aave's usdt is not enough, no revert.
             let usdtBal = await ct_USDT.balanceOf(ct_AToken.address);
@@ -430,7 +445,10 @@ describe(formatUTContractTitle("USDTStrategyToLender"), function () {
                 ct_USDTStrategyToLender.safeRemoveLender(
                     ct_GenericAaveV3.address,
                 ),
-            ).to.be.revertedWith("Withdraw failed");
+            ).to.be.revertedWithCustomError(
+                ct_USDTStrategyToLender,
+                "ErrorWithdrawFailed",
+            );
 
             let aTokenBal: any;
             let withdrawAmount: any;
@@ -532,10 +550,10 @@ describe(formatUTContractTitle("USDTStrategyToLender"), function () {
             ];
 
             // onlyAuthorized
-            await checkPermissionFunctionWithMsg(
+            await checkPermissionFunctionWithCustomError(
                 [vaultGovernance, strategistRoler],
                 [vaultManagement, vaultGuardian],
-                "!Authorized",
+                "ErrorNotAuthorized",
                 ct_USDTStrategyToLender,
                 "manualAllocation",
                 newLenderRatios,
@@ -572,7 +590,10 @@ describe(formatUTContractTitle("USDTStrategyToLender"), function () {
             ];
             await expect(
                 ct_USDTStrategyToLender.manualAllocation(errorLenderRatios),
-            ).to.be.revertedWith("Not lender");
+            ).to.be.revertedWithCustomError(
+                ct_USDTStrategyToLender,
+                "ErrorNotLender",
+            );
 
             // share is not equal 1000
             errorLenderRatios = [
@@ -583,7 +604,10 @@ describe(formatUTContractTitle("USDTStrategyToLender"), function () {
             ];
             await expect(
                 ct_USDTStrategyToLender.manualAllocation(errorLenderRatios),
-            ).to.be.revertedWith("Share!=1000");
+            ).to.be.revertedWithCustomError(
+                ct_USDTStrategyToLender,
+                "ErrorShareNotFull",
+            );
         });
 
         it("Successful: Called sweep function only by governance", async () => {
@@ -600,10 +624,10 @@ describe(formatUTContractTitle("USDTStrategyToLender"), function () {
                 await ct_newToken.balanceOf(vaultGovernance.address),
             ).to.be.equal(0);
 
-            await checkPermissionFunctionWithMsg(
+            await checkPermissionFunctionWithCustomError(
                 [vaultGovernance],
                 [vaultManagement, vaultGuardian, strategistRoler],
-                "!Governance",
+                "ErrorNotGovernance",
                 ct_USDTStrategyToLender,
                 "sweep",
                 ct_newToken.address,

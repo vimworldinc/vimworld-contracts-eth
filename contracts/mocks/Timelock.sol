@@ -30,9 +30,9 @@ contract Timelock {
         uint256 eta
     );
 
-    uint256 public constant GRACE_PERIOD = 14 days;
-    uint256 public constant MINIMUM_DELAY = 12 hours;
-    uint256 public constant MAXIMUM_DELAY = 30 days;
+    uint256 private constant _GRACE_PERIOD = 14 days;
+    uint256 private constant _MINIMUM_DELAY = 12 hours;
+    uint256 private constant _MAXIMUM_DELAY = 30 days;
 
     address public admin;
     address public pendingAdmin;
@@ -42,11 +42,11 @@ contract Timelock {
 
     constructor(address admin_, uint256 delay_) {
         require(
-            delay_ >= MINIMUM_DELAY,
+            delay_ >= _MINIMUM_DELAY,
             "Timelock::constructor: Delay must exceed minimum delay."
         );
         require(
-            delay_ <= MAXIMUM_DELAY,
+            delay_ <= _MAXIMUM_DELAY,
             "Timelock::setDelay: Delay must not exceed maximum delay."
         );
 
@@ -60,11 +60,11 @@ contract Timelock {
             "Timelock::setDelay: Call must come from Timelock."
         );
         require(
-            delay_ >= MINIMUM_DELAY,
+            delay_ >= _MINIMUM_DELAY,
             "Timelock::setDelay: Delay must exceed minimum delay."
         );
         require(
-            delay_ <= MAXIMUM_DELAY,
+            delay_ <= _MAXIMUM_DELAY,
             "Timelock::setDelay: Delay must not exceed maximum delay."
         );
         delay = delay_;
@@ -162,7 +162,7 @@ contract Timelock {
             "Timelock::executeTransaction: Transaction hasn't surpassed time lock."
         );
         require(
-            _getBlockTimestamp() <= (eta + GRACE_PERIOD),
+            _getBlockTimestamp() <= (eta + _GRACE_PERIOD),
             "Timelock::executeTransaction: Transaction is stale."
         );
 

@@ -22,18 +22,27 @@ abstract contract GenericLenderBase is Initializable {
     string public lenderName;
     uint256 public dust;
 
+    error ErrorNotManagement();
+    error ErrorNotGovernance();
+    error ErrorShouldNotProtected();
+    error ErrorStrategyZeroAddress();
+    error ErrorLenderAlreadyInitialized();
+
     modifier management() {
-        require(
-            msg.sender == address(strategy) ||
-                msg.sender == vault.governance() ||
-                msg.sender == vault.management(),
-            "!Management"
-        );
+        if (
+            msg.sender != address(strategy) &&
+            msg.sender != vault.governance() &&
+            msg.sender != vault.management()
+        ) {
+            revert ErrorNotManagement();
+        }
         _;
     }
 
     modifier onlyGovernance() {
-        require(msg.sender == vault.governance(), "!Governance");
+        if (msg.sender != vault.governance()) {
+            revert ErrorNotGovernance();
+        }
         _;
     }
 
@@ -48,7 +57,12 @@ abstract contract GenericLenderBase is Initializable {
         address strategy_,
         string memory name_
     ) internal onlyInitializing {
-        require(address(strategy) == address(0), "Lender already initialized");
+        if (address(strategy_) == address(0)) {
+            revert ErrorStrategyZeroAddress();
+        }
+        if (address(strategy) != address(0)) {
+            revert ErrorLenderAlreadyInitialized();
+        }
 
         strategy = strategy_;
         vault = IVault(IBaseStrategy(strategy).vault());
@@ -56,7 +70,8 @@ abstract contract GenericLenderBase is Initializable {
         lenderName = name_;
         dust = 0;
 
-        want.safeApprove(strategy_, type(uint256).max);
+        uint256 allowance_ = want.allowance(address(this), strategy_);
+        want.safeIncreaseAllowance(strategy_, type(uint256).max - allowance_);
     }
 
     function setDust(uint256 dust_) external virtual management {
@@ -81,8 +96,12 @@ abstract contract GenericLenderBase is Initializable {
      */
     function sweep(address token_) external virtual management {
         address[] memory protectedTokens_ = _protectedTokens();
-        for (uint256 i; i < protectedTokens_.length; i++)
-            require(token_ != protectedTokens_[i], "!Protected");
+        uint256 len_ = protectedTokens_.length;
+        for (uint256 i; i < len_; i++) {
+            if (token_ == protectedTokens_[i]) {
+                revert ErrorShouldNotProtected();
+            }
+        }
 
         IERC20Upgradeable(token_).safeTransfer(
             vault.governance(),

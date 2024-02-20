@@ -11,6 +11,7 @@ import {
     x18,
     mineIncreasedTime,
     MaxUint256,
+    checkPermissionFunctionWithCustomError,
     checkPermissionFunctionWithMsg,
     ZeroAddress,
     x_n,
@@ -31,7 +32,7 @@ describe(formatUTContractTitle("BaseStrategy"), function () {
     let vaultManagement: any;
     let vaultGuardian: any;
     let strategistRoler: any;
-    let keeperRole: any;
+    let keeperRoler: any;
     let rewardRoler: any;
     let owner: any;
     let adminRoler;
@@ -52,7 +53,7 @@ describe(formatUTContractTitle("BaseStrategy"), function () {
         vaultManagement = otherAccounts.shift();
         vaultGuardian = otherAccounts.shift();
         strategistRoler = otherAccounts.shift();
-        keeperRole = otherAccounts.shift();
+        keeperRoler = otherAccounts.shift();
         rewardRoler = otherAccounts.shift();
         adminRoler = otherAccounts.shift();
         minter = otherAccounts.shift();
@@ -86,7 +87,7 @@ describe(formatUTContractTitle("BaseStrategy"), function () {
             .setStrategist(strategistRoler.address);
         await ct_Strategy
             .connect(vaultGovernance)
-            .setKeeper(keeperRole.address);
+            .setKeeper(keeperRoler.address);
 
         await ct_Token.approve(ct_Vault.address, MaxUint256);
         await ct_Vault.deposit(VAULT_ASSET, vaultGovernance.address);
@@ -122,7 +123,19 @@ describe(formatUTContractTitle("BaseStrategy"), function () {
         it("Unsuccessful: deployment. \tReason: already initialized", async () => {
             await expect(
                 ct_Strategy.reinitialize(ct_Vault.address),
-            ).to.be.revertedWith("Strategy already initialized");
+            ).to.be.revertedWithCustomError(
+                ct_Strategy,
+                "ErrorStrategyAlreadyInitialized",
+            );
+        });
+
+        it("Unsuccessful: deployment. \tReason: zero address", async () => {
+            await expect(
+                ct_Strategy.reinitialize(ZeroAddress),
+            ).to.be.revertedWithCustomError(
+                ct_Strategy,
+                "ErrorVaultZeroAddress",
+            );
         });
     });
 
@@ -135,95 +148,95 @@ describe(formatUTContractTitle("BaseStrategy"), function () {
                 .setStrategist(strategistRoler.address);
             await ct_Strategy
                 .connect(vaultGovernance)
-                .setKeeper(keeperRole.address);
+                .setKeeper(keeperRoler.address);
         });
 
         it("Successful: test function setParams only by permission", async () => {
             // onlyVaultManagers
-            await checkPermissionFunctionWithMsg(
+            await checkPermissionFunctionWithCustomError(
                 [vaultGovernance, vaultManagement],
                 [vaultGuardian, strategistRoler, normalAccount],
-                "!Vault manager",
+                "ErrorNotVaultManager",
                 ct_Strategy,
                 "setHealthCheck",
                 ZeroAddress,
             );
             // onlyVaultManagers
-            await checkPermissionFunctionWithMsg(
+            await checkPermissionFunctionWithCustomError(
                 [vaultGovernance, vaultManagement],
                 [vaultGuardian, strategistRoler, normalAccount],
-                "!Vault manager",
+                "ErrorNotVaultManager",
                 ct_Strategy,
                 "setDoHealthCheck",
                 true,
             );
 
             // onlyAuthorized
-            await checkPermissionFunctionWithMsg(
+            await checkPermissionFunctionWithCustomError(
                 [vaultGovernance, strategistRoler],
-                [vaultManagement, vaultGuardian, keeperRole],
-                "!Authorized",
+                [vaultManagement, vaultGuardian, keeperRoler],
+                "ErrorNotAuthorized",
                 ct_Strategy,
                 "setStrategist",
                 strategistRoler.address,
             );
             // onlyAuthorized
-            await checkPermissionFunctionWithMsg(
+            await checkPermissionFunctionWithCustomError(
                 [vaultGovernance, strategistRoler],
-                [vaultManagement, vaultGuardian, keeperRole],
-                "!Authorized",
+                [vaultManagement, vaultGuardian, keeperRoler],
+                "ErrorNotAuthorized",
                 ct_Strategy,
                 "setKeeper",
-                keeperRole.address,
+                keeperRoler.address,
             );
 
             // onlyAuthorized
-            await checkPermissionFunctionWithMsg(
+            await checkPermissionFunctionWithCustomError(
                 [vaultGovernance, strategistRoler],
-                [vaultManagement, vaultGuardian, keeperRole],
-                "!Authorized",
+                [vaultManagement, vaultGuardian, keeperRoler],
+                "ErrorNotAuthorized",
                 ct_Strategy,
                 "setMinReportDelay",
                 0,
             );
             // onlyAuthorized
-            await checkPermissionFunctionWithMsg(
+            await checkPermissionFunctionWithCustomError(
                 [vaultGovernance, strategistRoler],
-                [vaultManagement, vaultGuardian, keeperRole],
-                "!Authorized",
+                [vaultManagement, vaultGuardian, keeperRoler],
+                "ErrorNotAuthorized",
                 ct_Strategy,
                 "setMaxReportDelay",
                 0,
             );
             // onlyAuthorized
-            await checkPermissionFunctionWithMsg(
+            await checkPermissionFunctionWithCustomError(
                 [vaultGovernance, strategistRoler],
-                [vaultManagement, vaultGuardian, keeperRole],
-                "!Authorized",
+                [vaultManagement, vaultGuardian, keeperRoler],
+                "ErrorNotAuthorized",
                 ct_Strategy,
                 "setProfitFactor",
                 0,
             );
             // onlyAuthorized
-            await checkPermissionFunctionWithMsg(
+            await checkPermissionFunctionWithCustomError(
                 [vaultGovernance, strategistRoler],
-                [vaultManagement, vaultGuardian, keeperRole],
-                "!Authorized",
+                [vaultManagement, vaultGuardian, keeperRoler],
+                "ErrorNotAuthorized",
                 ct_Strategy,
                 "setDebtThreshold",
                 0,
             );
             // onlyAuthorized
-            await checkPermissionFunctionWithMsg(
+            await checkPermissionFunctionWithCustomError(
                 [vaultGovernance, strategistRoler],
-                [vaultManagement, vaultGuardian, keeperRole],
-                "!Authorized",
+                [vaultManagement, vaultGuardian, keeperRoler],
+                "ErrorNotAuthorized",
                 ct_Strategy,
                 "setMetadataURI",
                 "",
             );
             // onlyStrategist
-            await checkPermissionFunctionWithMsg(
+            await checkPermissionFunctionWithCustomError(
                 [strategistRoler],
                 [
                     vaultGovernance,
@@ -231,51 +244,51 @@ describe(formatUTContractTitle("BaseStrategy"), function () {
                     vaultGuardian,
                     normalAccount,
                 ],
-                "!Strategist",
+                "ErrorNotStrategist",
                 ct_Strategy,
                 "testOnlyStrategy",
             );
 
             // onlyKeeper
-            await checkPermissionFunctionWithMsg(
+            await checkPermissionFunctionWithCustomError(
                 [
                     vaultGovernance,
                     vaultManagement,
                     vaultGuardian,
                     strategistRoler,
-                    keeperRole,
+                    keeperRoler,
                 ],
                 [normalAccount],
-                "!Keeper",
+                "ErrorNotKeeper",
                 ct_Strategy,
                 "harvest",
             );
 
             // onlyKeeper
-            await checkPermissionFunctionWithMsg(
+            await checkPermissionFunctionWithCustomError(
                 [
                     vaultGovernance,
                     vaultManagement,
                     vaultGuardian,
                     strategistRoler,
-                    keeperRole,
+                    keeperRoler,
                 ],
                 [normalAccount],
-                "!Keeper",
+                "ErrorNotKeeper",
                 ct_Strategy,
                 "tend",
             );
 
             // onlyEmergencyAuthorized
-            await checkPermissionFunctionWithMsg(
+            await checkPermissionFunctionWithCustomError(
                 [
                     vaultGovernance,
                     vaultManagement,
                     vaultGuardian,
                     strategistRoler,
                 ],
-                [keeperRole, normalAccount],
-                "!Emergency authorized",
+                [keeperRoler, normalAccount],
+                "ErrorNotEmergencyAuthorized",
                 ct_Strategy,
                 "setEmergencyExit",
             );
@@ -284,10 +297,16 @@ describe(formatUTContractTitle("BaseStrategy"), function () {
         it("Unsuccessful: Called setStrategist/setKeeper function. \tReason: zero address", async () => {
             await expect(
                 ct_Strategy.connect(vaultGovernance).setStrategist(ZeroAddress),
-            ).to.be.revertedWith("Invalid zero address");
+            ).to.be.revertedWithCustomError(
+                ct_Strategy,
+                "ErrorStrategyZeroAddress",
+            );
             await expect(
                 ct_Strategy.connect(vaultGovernance).setKeeper(ZeroAddress),
-            ).to.be.revertedWith("Invalid zero address");
+            ).to.be.revertedWithCustomError(
+                ct_Strategy,
+                "ErrorKeeperZeroAddress",
+            );
         });
 
         it("Successful: Called sweep function only by governance", async () => {
@@ -301,16 +320,16 @@ describe(formatUTContractTitle("BaseStrategy"), function () {
                 await ct_newToken.balanceOf(ct_Strategy.address),
             ).to.be.equal(amount);
 
-            await checkPermissionFunctionWithMsg(
+            await checkPermissionFunctionWithCustomError(
                 [vaultGovernance],
                 [
                     vaultManagement,
                     vaultGuardian,
                     strategistRoler,
-                    keeperRole,
+                    keeperRoler,
                     normalAccount,
                 ],
-                "!Governance",
+                "ErrorNotGovernance",
                 ct_Strategy,
                 "sweep",
                 ct_newToken.address,
@@ -331,13 +350,13 @@ describe(formatUTContractTitle("BaseStrategy"), function () {
         it("Unsuccessful: Called sweep. \tReason: token is want", async () => {
             await expect(
                 ct_Strategy.connect(vaultGovernance).sweep(ct_Token.address),
-            ).to.be.revertedWith("!Want");
+            ).to.be.revertedWithCustomError(ct_Strategy, "ErrorShouldNotWant");
         });
 
         it("Unsuccessful: Called sweep. \tReason: token is share", async () => {
             await expect(
                 ct_Strategy.connect(vaultGovernance).sweep(ct_Vault.address),
-            ).to.be.revertedWith("!Shares");
+            ).to.be.revertedWithCustomError(ct_Strategy, "ErrorShouldNotVault");
         });
     });
 
@@ -428,7 +447,10 @@ describe(formatUTContractTitle("BaseStrategy"), function () {
                     ct_Strategy.address,
                     other_Strategy.address,
                 ),
-            ).to.be.revertedWith("Vault of new strategy does not match");
+            ).to.be.revertedWithCustomError(
+                ct_Strategy,
+                "ErrorVaultOfNewStrategyDoesNotMatch",
+            );
 
             // new strategy
             let ct_new_Strategy = await deployTestStrategy(
@@ -441,7 +463,7 @@ describe(formatUTContractTitle("BaseStrategy"), function () {
                 ct_Strategy
                     .connect(vaultGovernance)
                     .migrate(ct_new_Strategy.address),
-            ).to.be.revertedWith("!Vault");
+            ).to.be.revertedWithCustomError(ct_Strategy, "ErrorNotVault");
 
             // Can't migrate if new strategy is 0x0
             await expect(
@@ -534,7 +556,7 @@ describe(formatUTContractTitle("BaseStrategy"), function () {
             // Do it once more, for good luck (and also coverage)
             await ct_Token.transfer(ct_Strategy.address, x18(1000));
             await mineIncreasedTime(3600);
-            await expect(ct_Strategy.connect(keeperRole).harvest()).not.to.be
+            await expect(ct_Strategy.connect(keeperRoler).harvest()).not.to.be
                 .reverted;
 
             // Vault didn't lose anything during shutdown
@@ -657,7 +679,7 @@ describe(formatUTContractTitle("BaseStrategy"), function () {
             );
             await expect(
                 ct_Strategy.connect(vaultGovernance).harvest(),
-            ).to.be.revertedWith("!Healthcheck");
+            ).to.be.revertedWithCustomError(ct_Strategy, "ErrorNotHealthCheck");
             await ct_Strategy.connect(vaultGovernance).setDoHealthCheck(false);
             await expect(ct_Strategy.connect(vaultGovernance).harvest()).not.to
                 .be.reverted;
@@ -679,7 +701,7 @@ describe(formatUTContractTitle("BaseStrategy"), function () {
                 .takeFunds(toBig(balance).div(100).mul(3));
             await expect(
                 ct_Strategy.connect(vaultGovernance).harvest(),
-            ).to.be.revertedWith("!Healthcheck");
+            ).to.be.revertedWithCustomError(ct_Strategy, "ErrorNotHealthCheck");
 
             await ct_Strategy.connect(vaultGovernance).setDoHealthCheck(false);
             await expect(ct_Strategy.connect(vaultGovernance).harvest()).not.to
@@ -789,7 +811,7 @@ describe(formatUTContractTitle("BaseStrategy"), function () {
             // Not just anyone can call it
             await expect(
                 ct_Strategy.connect(rando).withdraw(balance.div(2)),
-            ).to.be.revertedWith("!Vault");
+            ).to.be.revertedWithCustomError(ct_Strategy, "ErrorNotVault");
 
             // Anything over what we can liquidate is totally withdrawn
             await expect(
@@ -800,31 +822,31 @@ describe(formatUTContractTitle("BaseStrategy"), function () {
 
         it("Successful: test harvest tend authority", async () => {
             // Only keeper, strategist, or gov can call tend
-            await checkPermissionFunctionWithMsg(
+            await checkPermissionFunctionWithCustomError(
                 [
                     vaultGovernance,
                     vaultManagement,
                     vaultGuardian,
                     strategistRoler,
-                    keeperRole,
+                    keeperRoler,
                 ],
                 [normalAccount],
-                "!Keeper",
+                "ErrorNotKeeper",
                 ct_Strategy,
                 "tend",
             );
 
             // Only keeper, strategist, or gov can call harvest
-            await checkPermissionFunctionWithMsg(
+            await checkPermissionFunctionWithCustomError(
                 [
                     vaultGovernance,
                     vaultManagement,
                     vaultGuardian,
                     strategistRoler,
-                    keeperRole,
+                    keeperRoler,
                 ],
                 [normalAccount],
-                "!Keeper",
+                "ErrorNotKeeper",
                 ct_Strategy,
                 "harvest",
             );
